@@ -12,7 +12,9 @@
 
 NOTICE: Go support is still in Developer Preview. This implies that APIs may change while we address early feedback from the community. We would love to hear about your experience through GitHub issues.
 
-This example launches a secure static site hosted in an S3 bucket, distributed by CloudFront, protected by an ACM certificate, and with URIs automatically rewritten by a CloudFront Function (e.g. a request for example.com is served  example.com/index.html) this is required when using the S3 REST API. To get set up with go check out the AWS doc [Working with the AWS CDK in Go](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-go.html) and the blog post [Getting started with the AWS Cloud Development Kit and Go](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-go/)
+This example launches a secure static site hosted in an S3 bucket, distributed by CloudFront, protected by an ACM certificate, and with URIs automatically rewritten by a CloudFront Function (e.g. a request for example.com is served  example.com/index.html by default). 
+
+To get set up with go check out the AWS doc [Working with the AWS CDK in Go](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-go.html) and the blog post [Getting started with the AWS Cloud Development Kit and Go](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-go/)
 
 ## Libraries used:
 - awss3
@@ -50,3 +52,16 @@ Finally, a record is added to the Hosted Zone where the domain is located. The h
 
 ## More About aws-cdk-go
 Many property fields contain "nil" values which is Go's empty reference. Other values are references to undeclared slices. By default, go functions make a copy of arguments that they are passed. Thus, in aws-cdk-go references are often passed explicitly by using the "&" operator or the jsii.String("") helper function. See [Working with the AWS CDK in Go](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-go.html) and the blog post [Getting started with the AWS Cloud Development Kit and Go](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-go/) for more details.
+
+Additionally, several properties require inputs as a reference to a slice. For example we request the Bucket ARN so that we can add it to a new policy:
+```
+cdkBucketArn := cdkBucket.ArnForObjects(jsii.String("*"))
+```
+but because a new policy can accomodate multiple ARNs we add our single ARN into a slice before passing into the new policy construct:
+```
+cdkBucketArnSlice := &[]*string{cdkBucketArn}     //a reference (&) to a slice of pointers (*) to strings
+
+cdkPermission := awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+	Resources:     cdkBucketArnSlice,
+})
+```

@@ -17,8 +17,8 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-var DOMAIN_NAME string = "saulmagnusson.com"
-var ASSET_PATH string = "C:\\Users\\Saul\\Documents\\websites\\practice\\public"
+var DOMAIN_NAME string = "" //e.g. example.com
+var ASSET_PATH string = ""  // e.g. "C:\\Users\\Documents\\website"
 
 type SecureSiteStackProps struct {
 	awscdk.StackProps
@@ -31,6 +31,7 @@ func SecureSiteStack(scope constructs.Construct, id string, props *SecureSiteSta
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
+	//cdkBucket is initiated in this step, the asset files will be added to it in the deployment step
 	cdkBucket := awss3.NewBucket(stack, jsii.String("cdkBucket"), &awss3.BucketProps{
 		AccessControl:          awss3.BucketAccessControl_PRIVATE,
 		AutoDeleteObjects:      jsii.Bool(true),
@@ -56,7 +57,7 @@ func SecureSiteStack(scope constructs.Construct, id string, props *SecureSiteSta
 		WebsiteRoutingRules:    nil,
 	})
 
-	y := awss3deployment.Source_Asset(jsii.String(ASSET_PATH), &awss3assets.AssetOptions{
+	cdkAsset := awss3deployment.Source_Asset(jsii.String(ASSET_PATH), &awss3assets.AssetOptions{
 		Exclude:        &[]*string{},
 		Follow:         "",
 		IgnoreMode:     "",
@@ -70,7 +71,7 @@ func SecureSiteStack(scope constructs.Construct, id string, props *SecureSiteSta
 
 	awss3deployment.NewBucketDeployment(stack, jsii.String("cdkDeployment"), &awss3deployment.BucketDeploymentProps{
 		DestinationBucket:                     cdkBucket,
-		Sources:                               &[]awss3deployment.ISource{y},
+		Sources:                               &[]awss3deployment.ISource{cdkAsset},
 		AccessControl:                         "",
 		CacheControl:                          &[]awss3deployment.CacheControl{},
 		ContentDisposition:                    new(string),
@@ -98,10 +99,33 @@ func SecureSiteStack(scope constructs.Construct, id string, props *SecureSiteSta
 		WebsiteRedirectLocation:               new(string),
 	})
 
+	//an OAI is created to act as a principal in a policy granting cloudfront bucket access
 	cdkOAI := awscloudfront.NewOriginAccessIdentity(stack, jsii.String("cdkOAI"), &awscloudfront.OriginAccessIdentityProps{
 		Comment: nil,
 	})
+	//Get OAI Principal identity to add to a new bucket policy
+	cdkOAIslice := []awsiam.IPrincipal{cdkOAI.GrantPrincipal()}
 
+	//cdkBucketArn := cdkBucket.BucketArn()
+	cdkBucketArn := cdkBucket.ArnForObjects(jsii.String("*"))
+
+	cdkBucketArnSlice := &[]*string{cdkBucketArn}
+	//Create policy to give OAI access to bucket
+	cdkPermission := awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Actions:       jsii.Strings("s3:GetObject"),
+		Conditions:    &map[string]interface{}{},
+		Effect:        awsiam.Effect_ALLOW,
+		NotActions:    &[]*string{},
+		NotPrincipals: &[]awsiam.IPrincipal{},
+		NotResources:  &[]*string{},
+		Principals:    &cdkOAIslice,
+		Resources:     cdkBucketArnSlice,
+		Sid:           new(string),
+	})
+
+	cdkBucket.AddToResourcePolicy(cdkPermission)
+
+	//an origin for cloudfront to point to. This will be used in the cloudfront distributions properties
 	bucketOrigin := awscloudfrontorigins.NewS3Origin(cdkBucket, &awscloudfrontorigins.S3OriginProps{
 		ConnectionAttempts:   jsii.Number(2),
 		ConnectionTimeout:    nil,
@@ -110,7 +134,9 @@ func SecureSiteStack(scope constructs.Construct, id string, props *SecureSiteSta
 		OriginShieldRegion:   new(string),
 		OriginAccessIdentity: cdkOAI,
 	})
-	//function is from the following repo, squashed onto one line
+
+	//An inline javascript function will be used to rewrite URI's
+	//The function can be found in this AWS sample
 	//https://github.com/aws-samples/amazon-cloudfront-functions/blob/main/url-rewrite-single-page-apps/index.js
 	cfnInlineFunction := awscloudfront.FunctionCode_FromInline(jsii.String("function handler(event) {var request = event.request; var uri = request.uri; if (uri.endsWith('/')) {request.uri += 'index.html';} else if (!uri.includes('.')) {request.uri += '/index.html';};return request;}"))
 
@@ -124,12 +150,12 @@ func SecureSiteStack(scope constructs.Construct, id string, props *SecureSiteSta
 		EventType: awscloudfront.FunctionEventType_VIEWER_REQUEST,
 		Function:  cfnFunction,
 	}
+	//The function must be contained in a slice which can accomodate multiple functions before being
+	//added to the cloudfront distribtuions properties
 	cfnfunctionSlice := []*awscloudfront.FunctionAssociation{&cfnFunctionAssoc}
 
-	//If you have a hostedZone created already you will only need to create a record in it
-
-	//Note the below doesn't work because the hosted zone name becomes unavailable through that method
-	//cdkZone := awsroute53.HostedZone_FromHostedZoneId(stack, jsii.String("existingZone"), jsii.String("Z0781098175X5MB8PJQJ6"))
+	//Note: looking up a hosted zone by ID below doesn't work because the hosted zone name becomes unavailable
+	//cdkZone := awsroute53.HostedZone_FromHostedZoneId(stack, jsii.String("existingZone"), jsii.String("###Z078109######"))
 
 	cdkZone := awsroute53.HostedZone_FromLookup(stack, jsii.String("cdkZone"), &awsroute53.HostedZoneProviderProps{
 		DomainName:  jsii.String(DOMAIN_NAME),
@@ -181,28 +207,6 @@ func SecureSiteStack(scope constructs.Construct, id string, props *SecureSiteSta
 		PriceClass:             "",
 		WebAclId:               new(string),
 	})
-
-	//Get OAI Principal identity
-	cdkOAIslice := []awsiam.IPrincipal{cdkOAI.GrantPrincipal()}
-
-	cdkBucketArn2 := cdkBucket.ArnForObjects(jsii.String("*"))
-	//cdkBucketArn := cdkBucket.BucketArn()
-
-	cdkBucketArnSlice := &[]*string{cdkBucketArn2}
-	//give Cfn distribution's OAI read access
-	cdkPermission := awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
-		Actions:       jsii.Strings("s3:GetObject"),
-		Conditions:    &map[string]interface{}{},
-		Effect:        awsiam.Effect_ALLOW,
-		NotActions:    &[]*string{},
-		NotPrincipals: &[]awsiam.IPrincipal{},
-		NotResources:  &[]*string{},
-		Principals:    &cdkOAIslice,
-		Resources:     cdkBucketArnSlice,
-		Sid:           new(string),
-	})
-
-	cdkBucket.AddToResourcePolicy(cdkPermission)
 
 	cdkCfnTarget := awsroute53targets.NewCloudFrontTarget(cdkDistribution)
 

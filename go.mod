@@ -1,4 +1,4 @@
-module first-proj
+module secure-site
 
 go 1.16
 
