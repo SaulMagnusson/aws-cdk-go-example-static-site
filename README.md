@@ -1,4 +1,3 @@
-# Launch a Secure Static Site With aws-cdk-go
 <!--BEGIN STABILITY BANNER-->
 ---
 
@@ -12,17 +11,12 @@
 
 NOTICE: Go support is still in Developer Preview. This implies that APIs may change while we address early feedback from the community. We would love to hear about your experience through GitHub issues.
 
+# Launch a Secure Static Site
 This example launches a secure static site hosted in an S3 bucket, distributed by CloudFront, protected by an ACM certificate, and with URIs automatically rewritten by a CloudFront Function (e.g. a request for example.com is served  example.com/index.html by default). 
 
-To get set up with go check out the AWS doc [Working with the AWS CDK in Go](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-go.html) and the blog post [Getting started with the AWS Cloud Development Kit and Go](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-go/)
-
-## Libraries used:
-- awss3
-- awss3-deployments
-- awscloudfront
-- awscloudfrontorigins
-- awscertificatemanager
-- awsroute53
+To get set up with go check out the useful articles: 
+- [Working with the AWS CDK in Go](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-go.html)
+- [Getting started with the AWS Cloud Development Kit and Go](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-go/)
 
 ## Deploy
 
@@ -57,7 +51,7 @@ Additionally, several properties require inputs as a reference to a slice. For e
 ```
 cdkBucketArn := cdkBucket.ArnForObjects(jsii.String("*"))
 ```
-but because a new policy can accomodate multiple ARNs we add our single ARN into a slice before passing into the new policy construct:
+but because a new policy can accomodate multiple ARNs we add our single ARN into a slice before passing it to the policy statement construct:
 ```
 cdkBucketArnSlice := &[]*string{cdkBucketArn}     //a reference (&) to a slice of pointers (*) to strings
 
