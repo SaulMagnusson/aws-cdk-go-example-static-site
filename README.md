@@ -1,3 +1,4 @@
+# Launch a Secure Static Site With aws-cdk-go
 <!--BEGIN STABILITY BANNER-->
 ---
 
@@ -11,11 +12,9 @@
 
 NOTICE: Go support is still in Developer Preview. This implies that APIs may change while we address early feedback from the community. We would love to hear about your experience through GitHub issues.
 
-Throughout the code all property fields are exposed although many contain "nil" values or references to undeclared slices. Some of these fields are deprecated, check the [aws-cdk API reference](https://docs.aws.amazon.com/cdk/api/latest/docs/aws-construct-library.html). By default, go functions take a copy of arguments, thus in aws-cdk-go, references are passed by taking the address of the variable with "&" the address operator. Reference types are indicated by "*" thus &"hello", a reference to the string "hello" is of type *string. jsii.String("") and other functions are helper functions that return references to their argyments. See [Working with the AWS CDK in Go](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-go.html) and the blog post [Getting started with the AWS Cloud Development Kit and Go](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-go/)
+This example launches a secure static site hosted in an S3 bucket, distributed by CloudFront, protected by an ACM certificate, and with URIs automatically rewritten by a CloudFront Function (e.g. a request for example.com is served  example.com/index.html) this is required when using the S3 REST API. To get set up with go check out the AWS doc [Working with the AWS CDK in Go](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-go.html) and the blog post [Getting started with the AWS Cloud Development Kit and Go](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-go/)
 
-This example launches a secure static site hosted in an S3 bucket distributed by CloudFront, protected by a certificate managed by ACM, and with its uri's automatically rewritten by a CloudFront Function (e.g. a user request for example.com is routed to example.com/index.html). 
-
-Constructs used:
+## Libraries used:
 - awss3
 - awss3-deployments
 - awscloudfront
@@ -23,14 +22,17 @@ Constructs used:
 - awscertificatemanager
 - awsroute53
 
+## Deploy
 
-##Deploy
+Fill in the variables DOMAIN_NAME and ASSET_PATH. 
 
-Th variables DOMAIN_NAME and ASSET_PATH must be filled in manually. DOMAIN_NAME must be a domain name the user owns (example.com) and it must have a hosted zone with only the original NS and SOA records in it. The certificate will be automatically validated from this zone and a new record will be created in it pointing to the cloudfront distribution.
+DOMAIN_NAME must be a domain name that the user owns (like example.com) and it must have a Hosted Zone in Route53 containing only NS and SOA records.
 
-ASSET_PATH contains the path on the users local directory to the html files for the static site that will be uploaded to an S3 bucket. 
+ASSET_PATH is a local directory containing files for the static site. These files will be deployed to an S3 bucket. 
 
-This code requires a bootstrapping step where local files are uploaded into a staging bucket. The staging bucket is named after a hash of the source files, making this a one time step unless the source files change. This bucket will also contain ~10MiB of aws-cli files.
+This code requires a bootstrapping step where the local files are first uploaded into a staging bucket. The staging bucket name is a hash of the source files, making this a one time step unless the source files are changed. This bucket also contains ~10MiB of aws-cli files.
+
+The following commands will deploy a secure static site:
 
 ```
 cdk bootstrap
@@ -38,14 +40,13 @@ cdk synth
 cdk deploy
 ```
 
+## What this code does
 
+In the bootstrapping step the local files are zipped and added to a staging bucket. In the deployment step, the files are deployed to an S3 bucket. A CloudFront Origin Access Identity is created and then added as a principal to a bucket policy which allows CloudFront to access the bucket. The bucket is added as an origin to the Cloudfront distribution.
 
+A certificate is created and automatically validated by looking up the appropriate hosted zone. A Cloudfront Function is attached as an inline function present in the code that will rewrite the URI's in response to a viewer request event. The function is an inline version of a function from [AWS-samples](https://github.com/aws-samples/amazon-cloudfront-functions/tree/main/url-rewrite-single-page-apps).
 
-Configuring the CloudFront distribution
+Finally, a record is added to the Hosted Zone where the domain is located. The hosted zone is looked up by the domain name. Looking up the Hosted Zone by ID does not work for this step because that function doesn't have access to the zone name.
 
-
-Next a CloudFront distribution is created. It will link with several constructs: a bucket origin as a source, a certificate managed by ACM, a Cloudfront Function association which will rewrite the URI's, and an Origin Access Identity that will be used as a Principal for permissions in an S3 bucket policy added to the bucket.
-
-Adding a record to Route53
-
-Finally, a record must be added to the Hosted Zone where the domain is located. A hosted zone lookup can be used for this procedure. Looking up the Hosted Zone by ID does not work for this step because the zone name is obscured in that function.
+## More About aws-cdk-go
+Many property fields contain "nil" values which is Go's empty reference. Other values are references to undeclared slices. By default, go functions make a copy of arguments that they are passed. Thus, in aws-cdk-go references are often passed explicitly by using the "&" operator or the jsii.String("") helper function. See [Working with the AWS CDK in Go](https://docs.aws.amazon.com/cdk/latest/guide/work-with-cdk-go.html) and the blog post [Getting started with the AWS Cloud Development Kit and Go](https://aws.amazon.com/blogs/developer/getting-started-with-the-aws-cloud-development-kit-and-go/) for more details.
