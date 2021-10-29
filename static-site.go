@@ -17,8 +17,8 @@ import (
 	"github.com/aws/jsii-runtime-go"
 )
 
-var DOMAIN_NAME string = "" //e.g. example.com
-var ASSET_PATH string = ""  // e.g. "C:\\Users\\Documents\\website"
+var DOMAIN_NAME string =  //e.g. example.com
+var ASSET_PATH string =  //e.g. "C:\\Users\\Documents\\website"
 
 type SecureSiteStackProps struct {
 	awscdk.StackProps

@@ -28,7 +28,7 @@ ASSET_PATH is a local directory containing files for the static site. These file
 
 This code requires a bootstrapping step where the local files are first uploaded into a staging bucket. The staging bucket name is a hash of the source files, making this a one time step unless the source files are changed. This bucket also contains ~10MiB of aws-cli files.
 
-The following commands will deploy a secure static site:
+Run the following commands to create a static site:
 
 ```
 cdk bootstrap

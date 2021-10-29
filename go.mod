@@ -1,4 +1,4 @@
-module secure-site
+module static-site
 
 go 1.16
 
